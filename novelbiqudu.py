@@ -11,7 +11,8 @@ class NovelBiqudu(Novel):
     def __init__(self, bookid):
         Novel.__init__(self, bookid)
         self.urlheader = 'https://www.biqudu.net'
-        self.blackliststr = ['readx();', 'chaptererror();']
+        self.blackliststrline = ['readx();', 'chaptererror();']
+        self.blackliststr = []
 
     def _igetintro(self):
         intro = {}
@@ -46,8 +47,8 @@ class NovelBiqudu(Novel):
             else:
                 if dtdd.name == 'dd':
                     chapterurl = self.urlheader + dtdd.a['href']
-                    chaptertitleout = dtdd.a.text.strip()
-                    chapter = self.Chapter(title=chaptertitleout, url=chapterurl)
+                    chaptertitle = dtdd.a.text.strip()
+                    chapter = self.Chapter(title=chaptertitle, url=chapterurl)
                     self.chapterlist.append(chapter)
 
     def _igetchapter(self, chapter):
@@ -59,10 +60,14 @@ class NovelBiqudu(Novel):
         chapter.titlein = box_con('div', {'class': 'bookname'})[0].h1.text.strip()
         textlines = box_con('div', {'id': 'content'})[0](text=True)
         for line in textlines:
-            if line not in self.blackliststr:
+            if line not in self.blackliststrline:
                 line = line.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip()
-                if line != '':
-                    chapter.text.append(line)
+                if line not in self.blackliststrline:
+                    if line != '':
+                        for blackstr in self.blackliststr:
+                            if blackstr in line:
+                                line.replace(blackstr, '')
+                        chapter.text.append(line)
 
 
 if __name__ == '__main__':
