@@ -36,7 +36,7 @@ class NovelBiqudu(Novel):
         return intro
 
     def _igetchapters(self):
-        url = self.urlheader + '/' + + self.bookid + '/'
+        url = self.urlheader + '/' + self.bookid + '/'
         soup = self._getsoup(url)
         dtdds = soup({'dt': True, 'dd': True})
         passednewest = 2
