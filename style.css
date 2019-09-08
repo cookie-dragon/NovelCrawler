@@ -1,0 +1,21 @@
+p {
+    text-indent: 2em;
+}
+
+h1 {
+    margin: 1.5em;
+    text-align: center;
+}
+
+h2 {
+    margin: 1em;
+    text-align: center;
+}
+
+.center {
+    text-align: center;
+}
+
+.pagebreak {
+    page-break-before: always;
+}
