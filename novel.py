@@ -3,6 +3,7 @@
 # @Time:    2019/9/7 20:05
 # @Author:  Cooky Long
 # @File:    novel.py
+import logging
 import os
 import shutil
 import sys
@@ -18,6 +19,11 @@ from pyh import *
 
 OUTPUTDIR = 'output'
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+logging.getLogger("urllib3.connectionpool").setLevel(logging.INFO)
+
 
 class Novel(object):
     class Intro:
@@ -25,7 +31,7 @@ class Novel(object):
             self.title = self.__titlefix(title)
             self.coverurl = coverurl.strip()
             self.author = author.strip()
-            self.desc = desc.strip()
+            self.desc = desc.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip()
 
             if not os.path.exists(OUTPUTDIR):
                 os.mkdir(OUTPUTDIR)
@@ -54,7 +60,6 @@ class Novel(object):
             return ("%04d" % self.index) + '_' + self.title
 
     def __init__(self, bookid):
-
         requests.packages.urllib3.disable_warnings()
         self.session = requests.Session()
 
@@ -66,7 +71,7 @@ class Novel(object):
         tsstart = time.time()
         response = self.session.get(url, verify=False)
         tsend = time.time()
-        print('[SOUP]Used time： ' + str(tsend - tsstart))
+        logger.debug('[SOUP]Used time： ' + str(tsend - tsstart))
         response.encoding = encoding
         page = response.text
         soup = BeautifulSoup(page, 'html.parser')
@@ -78,12 +83,14 @@ class Novel(object):
     def __buildintro(self):
         intro = self._igetintro()
         self.intro = self.Intro(intro['title'], intro['coverurl'], intro['author'], intro['desc'])
+        logger.info('[NOVEL]' + intro['title'] + ' - ' + intro['author'])
 
     def _igetchapters(self):
         pass
 
     def __buildchapters(self):
         self._igetchapters()
+        logger.debug('[CHAPTERS]Builded!')
 
     def _igetchapter(self, chapter):
         pass
@@ -95,37 +102,48 @@ class Novel(object):
         self.ncx = Publish.Ncx(self.intro)
         self.opf = Publish.Opf(self.intro)
 
-        for i in range(len(self.chapterlist)):
+        cnt = len(self.chapterlist)
+        for i in range(cnt):
             chapter = self.chapterlist[i]
             chapter.index = i
 
             if os.path.exists(self.intro.getoutputpath() + chapter.getfilename() + '.html'):
-                pass
+                logger.warning(
+                    '[CHAPTER ' + str(i + 1) + '/' + str(cnt)
+                    + ']Exist & SKIP! \t' + '《' + chapter.title + '》')
             else:
                 hasnewchapter = True
                 self._igetchapter(chapter)
                 Publish.Ch(self.intro, chapter).output()
+                logger.info(
+                    '[CHAPTER ' + str(i + 1) + '/' + str(cnt)
+                    + ']Builded & Files Output! \t' + '《' + chapter.title + '》')
 
             self.toc.addchapter(chapter)
             self.ncx.addchapter(chapter)
             self.opf.addchapter(chapter)
 
+        logger.debug('[Table Of Contents]Builded!')
         return hasnewchapter
 
     def __buildothers(self):
         self.toc.output()
         self.ncx.output()
         self.opf.output()
+        logger.debug('[Table Of Contents]Files Output!')
 
         response = requests.get(self.intro.coverurl, verify=False)
         cover = response.content
         with open(self.intro.getoutputpath() + 'cover.jpg', 'wb') as f:
             f.write(cover)
+        logger.debug('[Cover]Files Output!')
 
         shutil.copyfile('style.css', self.intro.getoutputpath() + 'style.css')
+        logger.debug('[Style]Files Copied!')
 
     def __buildmobi(self):
         plat = sys.platform
+        tsstart = time.time()
         if plat.startswith('win'):
             call(['kindlegen/windows/kindlegen.exe', '-verbose',
                   self.intro.getoutputpath() + self.intro.author + ' - ' + self.intro.title + '.opf'])
@@ -135,6 +153,8 @@ class Novel(object):
         elif plat == 'darwin':
             call(['kindlegen/macos/kindlegen', '-verbose',
                   self.intro.getoutputpath() + self.intro.author + ' - ' + self.intro.title + '.opf'])
+        tsend = time.time()
+        logger.info('[MOBI]Used time： ' + str(tsend - tsstart))
 
     def build(self):
         self.__buildintro()
@@ -142,6 +162,8 @@ class Novel(object):
         if self.__buildchapter():
             self.__buildothers()
             self.__buildmobi()
+        else:
+            logger.warning('[ALL CHAPTERS]No New Chapter & BREAK! ')
 
 
 class Publish(object):
