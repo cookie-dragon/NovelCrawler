@@ -26,9 +26,19 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.INFO)
 
 
 class Novel(object):
+
+    @staticmethod
+    def titlefix(title):
+        symbol = ['\\', '/', ':', '*', '?', '"', '<', '>', '|', '+']
+        fixedsymbol = [' ', ' ', u'：', 'x', u'？', ' ', ' ', ' ', ' ', ',']
+        title = title.strip()
+        for i in range(len(symbol)):
+            title = title.replace(symbol[i], fixedsymbol[i])
+        return title
+
     class Intro:
         def __init__(self, title, coverurl, author, desc):
-            self.title = self.__titlefix(title)
+            self.title = Novel.titlefix(title)
             self.coverurl = coverurl.strip()
             self.author = author.strip()
             self.desc = desc.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip()
@@ -38,20 +48,12 @@ class Novel(object):
             if not os.path.exists(OUTPUTDIR + os.sep + title):
                 os.mkdir(OUTPUTDIR + os.sep + title)
 
-        def __titlefix(self, title):
-            symbol = ['\\', '/', ':', '*', '?', '"', '<', '>', '|', '+']
-            fixedsymbol = [' ', ' ', u'：', 'x', u'？', ' ', ' ', ' ', ' ', ',']
-            title = title.strip()
-            for i in range(len(symbol)):
-                title = title.replace(symbol[i], fixedsymbol[i])
-            return title
-
         def getoutputpath(self):
             return OUTPUTDIR + os.sep + self.title + os.sep
 
     class Chapter(object):
         def __init__(self, title, url):
-            self.title = title
+            self.title = Novel.titlefix(title)
             self.url = url
             self.index = 0
             self.text = []
